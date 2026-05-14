@@ -1,0 +1,16 @@
+[Unit]
+Description=ThinkPad Battery Threshold Enforcer
+# Defense against DE interference: Run after the GUI and Power Daemons are up
+After=multi-user.target graphical.target power-profiles-daemon.service
+# Run after system wakes from sleep
+After=suspend.target hibernate.target hybrid-sleep.target suspend-then-hibernate.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/bat-manager
+# Optional: verify it ran in logs
+StandardOutput=journal
+
+[Install]
+# This ensures it runs on Boot and on Wake
+WantedBy=multi-user.target suspend.target hibernate.target hybrid-sleep.target suspend-then-hibernate.target

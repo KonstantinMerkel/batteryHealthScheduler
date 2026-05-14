@@ -1,0 +1,34 @@
+#!/bin/bash
+# Description: Idempotent Battery Threshold Manager for compatible hardware (e.g., ThinkPads)
+
+# Determine target state based on schedule
+# High Capacity: Tuesday 19:00 -> Thursday 14:00
+# Power Save:    All other times
+current_day=$(date +%u)
+current_hour=$(date +%H)
+
+if [[ ($current_day -eq 2 && $current_hour -ge 19) ]] || \
+   [[ $current_day -eq 3 ]] || \
+   [[ ($current_day -eq 4 && $current_hour -lt 14) ]]; then
+    TARGET=100
+else
+    TARGET=80
+fi
+
+# Apply state idempotently
+BAT_PATH="/sys/class/power_supply/BAT0/charge_control_end_threshold"
+
+if [ ! -f "$BAT_PATH" ]; then
+    echo "Error: Battery path not found at $BAT_PATH"
+    exit 1
+fi
+
+CURRENT=$(cat "$BAT_PATH" | tr -d '[:space:]')
+
+if [ "$CURRENT" -eq "$TARGET" ]; then
+    echo "Battery already at ${TARGET}%. No action needed."
+else
+    echo "Switching battery threshold from ${CURRENT}% to ${TARGET}%."
+    echo "$TARGET" > "$BAT_PATH"
+fi
+
