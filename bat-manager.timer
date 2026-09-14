@@ -3,7 +3,11 @@ Description=Trigger Battery Threshold Check at Schedule Boundaries
 
 [Timer]
 # Trigger exactly at the transition points
-OnCalendar=Tue *-*-* 19:00:00
+OnCalendar=Sun *-*-* 19:00:00
+OnCalendar=Mon *-*-* 14:00:00
+OnCalendar=Mon *-*-* 19:00:00
+OnCalendar=Tue *-*-* 14:00:00
+OnCalendar=Wed *-*-* 19:00:00
 OnCalendar=Thu *-*-* 14:00:00
 
 # If the computer was off during these times, run immediately on boot

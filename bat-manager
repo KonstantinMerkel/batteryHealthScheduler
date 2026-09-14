@@ -1,34 +1,34 @@
 #!/bin/bash
-# Description: Idempotent Battery Threshold Manager for compatible hardware (e.g., ThinkPads)
+# Description: Battery Threshold Manager for ThinkPad via UPower D-Bus API
+# Uses the same call as GNOME Settings — no raw sysfs writes.
+#
+# Logic:
+#   - 100% Charge (threshold OFF): Sun 19:00 -> Mon 14:00, Mon 19:00 -> Tue 14:00, Wed 19:00 -> Thu 14:00
+#   - 80% Charge  (threshold ON):  All other times
 
-# Determine target state based on schedule
-# High Capacity: Tuesday 19:00 -> Thursday 14:00
-# Power Save:    All other times
-current_day=$(date +%u)
-current_hour=$(date +%H)
+UPOWER_DEST="org.freedesktop.UPower"
+UPOWER_PATH="/org/freedesktop/UPower/devices/battery_BAT0"
+UPOWER_METHOD="org.freedesktop.UPower.Device.EnableChargeThreshold"
 
-if [[ ($current_day -eq 2 && $current_hour -ge 19) ]] || \
-   [[ $current_day -eq 3 ]] || \
+current_day=$(date +%u)   # 1=Mon .. 7=Sun
+current_hour=$(date +%-H) # no leading zero — avoids bash octal trap
+
+if [[ ($current_day -eq 7 && $current_hour -ge 19) ]] || \
+   [[ ($current_day -eq 1 && $current_hour -lt 14) ]] || \
+   [[ ($current_day -eq 1 && $current_hour -ge 19) ]] || \
+   [[ ($current_day -eq 2 && $current_hour -lt 14) ]] || \
+   [[ ($current_day -eq 3 && $current_hour -ge 19) ]] || \
    [[ ($current_day -eq 4 && $current_hour -lt 14) ]]; then
-    TARGET=100
+    ENABLE=false
+    LABEL="100% (uni prep)"
 else
-    TARGET=80
+    ENABLE=true
+    LABEL="80% (battery saver)"
 fi
 
-# Apply state idempotently
-BAT_PATH="/sys/class/power_supply/BAT0/charge_control_end_threshold"
-
-if [ ! -f "$BAT_PATH" ]; then
-    echo "Error: Battery path not found at $BAT_PATH"
-    exit 1
-fi
-
-CURRENT=$(cat "$BAT_PATH" | tr -d '[:space:]')
-
-if [ "$CURRENT" -eq "$TARGET" ]; then
-    echo "Battery already at ${TARGET}%. No action needed."
-else
-    echo "Switching battery threshold from ${CURRENT}% to ${TARGET}%."
-    echo "$TARGET" > "$BAT_PATH"
-fi
-
+echo "Applying ${LABEL} (charge threshold enabled=${ENABLE})."
+gdbus call --system \
+    --dest "$UPOWER_DEST" \
+    --object-path "$UPOWER_PATH" \
+    --method "$UPOWER_METHOD" \
+    "$ENABLE"
